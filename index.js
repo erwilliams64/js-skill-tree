@@ -3,15 +3,14 @@ const esprima = require('esprima'); // for parsing JavaScript code
 require('dotenv').config(); // for getting the .env file to work
 
 const username = 'erwilliams64'; // Replace with your GitHub username
-const token = process.env.GITHUB_TOKEN; // Make sure the .env file has GITHUB_TOKEN set
-
-if (!token) {
-    throw new Error('GITHUB_TOKEN is not set. Make sure you have defined it in your .env file.');
-}
+const token = process.env.GITHUB_TOKEN; // Make sure the .env file has GITHUB_TOKEN set. The token is generated using this flow: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token
+    
 
 const octokit = new Octokit({
     auth: token,
 });
+
+
 
 async function getAllReposWithCommits(username) {
     try {
@@ -34,7 +33,23 @@ async function getAllReposWithCommits(username) {
     }
 }
 
+async function getCommitDiff(owner, repo, sha) {
+    try {
+        const response = await octokit.request('GET /repos/{owner}/{repo}/commits/{sha}', {
+            owner,
+            repo,
+            sha
+        });
+        return response.data.files; // This will contain the diff for each file in the commit
+    } catch (error) {
+        console.error(`Error fetching commit diff for ${sha} in repo ${repo}:`, error.response?.status, error.message);
+        return [];
+    }
+}
+
+
 async function getCommitsForRepo(owner, repo) {
+    console.log(`Fetching commits for repo: ${owner}/${repo}`);
     try {
         const response = await octokit.request('GET /repos/{owner}/{repo}/commits', {
             owner,
@@ -42,7 +57,7 @@ async function getCommitsForRepo(owner, repo) {
         });
         return response.data;
     } catch (error) {
-        console.error(`Error fetching commits for repo ${repo}:`, error.message);
+        console.error(`Error fetching commits for repo ${repo}:`, error.response?.status, error.message);
         return [];
     }
 }
@@ -65,19 +80,37 @@ function parseJavaScriptFunctions(content) {
     }
 }
 
+// const octokit = new Octokit({
+//     auth: token
+//   })
+  
+//   await octokit.request('GET /repos/{owner}/{repo}/commits', {
+//     owner: username,
+//     repo: "erwilliams64/js-skill-tree",
+//     headers: {
+//       'X-GitHub-Api-Version': '2022-11-28'
+//     }
+//   })
+
+
 async function main() {
     const repos = await getAllReposWithCommits(username);
 
-    for (const repo of repos) {
-        const commits = await getCommitsForRepo(username, repo);
+    for (const repoFullName of repos) {
+        // Correctly extract the owner and repo from the full repo name
+        const [owner, repo] = repoFullName.split("/");
+        const commits = await getCommitsForRepo(owner, repo);
 
         for (const commit of commits) {
-            // Extract commit SHA and date
             const commitSha = commit.sha;
             const commitDate = commit.commit.committer.date;
+            const commitDiff = await getCommitDiff(owner, repo, commitSha);
+
+            console.log(`Repo: ${repoFullName}, Commit SHA: ${commitSha}, Date: ${commitDate}`);
+           
 
             console.log(`Repo: ${repo}, Commit SHA: ${commitSha}, Date: ${commitDate}`);
-
+            console.log(commitDiff)
             // // Fetching the actual JavaScript code for each commit is a complex task.
             // // This requires either cloning the repository and checking out each commit,
             // // or fetching individual files via the API.
@@ -89,4 +122,14 @@ async function main() {
     }
 }
 
+async function checkTokenScopes() {
+    try {
+        const response = await octokit.request('GET /user');
+        console.log('Token Scopes:', response.headers['x-oauth-scopes']);
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
 main();
+checkTokenScopes();

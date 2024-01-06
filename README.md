@@ -11,6 +11,8 @@ The code MVP should eventually:
 ## Setup
 You need to install npm (you can do this by installing [Node.js](https://nodejs.org/en/download)). Once that is done, run `npm install` in this directory to install all the requirements.
 
+You will also need to get an access token from here: https://github.com/settings/personal-access-tokens/new
+
 ## Usage
 First, run `node .` to start the script. You may be prompted to enter your gmail credentials in-browser if you haven't done so already. When prompted for granting access, make sure you click "Select All".  If you would like to be prompted to change your email login, delete the `token.js` file and run the script again.
 
